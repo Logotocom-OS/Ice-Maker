@@ -1,13 +1,13 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 
-// Relay pins
+// IO pins
 //AC
 const char Compresser = 2;
-const char CompresserReverse = 3;
+const char CompresserReverseValve = 3;
 const char IceDispenseForword = 4;
 const char IceDispenseBackward = 5;
-const char IceMotor = '6';
+const char IceMotor = 6;
 
 //DC
 const char IceWaterPump = 10;
@@ -27,10 +27,11 @@ const char LargerIce = 'A7';
 const char SmallerIce = 'A8';
 
 //Other Outputs
-const int backlightLED = '14';
+const int backlightLED = 14;
 
 //vars
 bool compressorRunning  = 0;
+bool compressorReverse = 0;
 bool dispensingWater = 0;
 bool dispensingIce = 0;
 int iceCycleStage= 0;
@@ -41,28 +42,34 @@ int iceCycleStage= 0;
  * 3 = make ice
  * 4 = reverse
  * 5 = cycle tray
+ * 6 = reset
  */
 int iceSize = 0;
 // 0 = small, 1 = large
-bool waterLow = 0;
+bool waterLow = 1;
 bool powerOn = 0;
-bool fanOn = 0;
 bool iceFull = 0;
-int motorDirection = 3;
+int motorDirection = 3; 
 //1 = forword, 2 = reverse, 0 = stopped, 3 = unknown
 bool backlightOn = 0;
 
-
+//display vars
+int displayProgressPercentage = 0;
+String statusMessage = "################"; //init with 16 values to skip memory issues
 
 
 //timer length
 const int waterFilltime = 1000;
 const int LowIceTime = 10000;
 const int HighIceTimne = 20000;
+const int DisplayUpdateDelayTime = 500;
 
-//timers
+int iceTimer = HighIceTimne;
+
+//timers  1 = finished, 0 = disabled
 int Ice = 0;
 int Fill = 0;
+int DisplayUpdateDelay = 0;
 
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -70,8 +77,8 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup()
 { 
-  lcd.begin();
-  lcd.print("Starting");
+  lcd.begin(); //init the lcd
+  lcd.print("Starting#########");
   // Initialize the serial port at a speed of 9600 baud
   Serial.begin(9600);
   int i = 0;
@@ -83,15 +90,66 @@ void setup()
 }
 
 void loop(){
-  setRelayState();
+  decrementTimer();
   updateSensors();
+  cycle();
+  setRelayState();
+}
+void cycle(){
+  if (iceCycleStage == 1){
+    
+  }
+  if (iceCycleStage == 2){ //filling with water
+    if (Fill == 0){
+      Fill = waterFilltime;
+    }
+    if (Fill == 1){
+     //water pump off
+     Fill = 0;
+     iceCycleStage = iceCycleStage + 1;
+    }
+  }
+  if (iceCycleStage == 3){ //making ice
+    if (Ice == 0){
+      Ice = iceTimer;
+    }
+    compressorReverse = 0;
+    compressorRunning = 1;
+    if (Ice == 1){
+      iceCycleStage = iceCycleStage + 1;
+      Ice = 0;
+    }
+  }
+  if (iceCycleStage == 4){
+    compressorReverse = 1;
+  }
+  if (iceCycleStage == 5){ 
+    
+  }
+  if (iceCycleStage == 6){ //reset
+    
+  }
+}
+
+void decrementTimer(){
+  if (Ice > 1){
+    Ice = Ice - 1;
+  }
+  if (Fill > 1){
+    Fill = Fill - 1;
+  }
+  if (DisplayUpdateDelay > 1){
+    DisplayUpdateDelay = DisplayUpdateDelay - 1;
+  }
 }
 void setRelayState(){
   if (compressorRunning){
     digitalWrite(Compresser, LOW);
+    digitalWrite(Fan, LOW);
   }
   else{
     digitalWrite(Compresser, HIGH);
+    digitalWrite(Fan, HIGH);
   }
   if (dispensingWater){
     digitalWrite(WaterDispensePump, LOW);
@@ -111,11 +169,17 @@ void setRelayState(){
   else{
     digitalWrite(WaterSolinoid, HIGH);
   }
-  if (fanOn){
-    digitalWrite(Fan, LOW);
+  if (backlightOn){
+    digitalWrite(backlightLED, LOW);
   }
   else{
-    digitalWrite(Fan, HIGH);
+    digitalWrite(backlightLED,HIGH);
+  }
+  if (compressorReverse){
+    digitalWrite(CompresserReverseValve, LOW);
+  }
+  else{
+    digitalWrite(CompresserReverseValve,HIGH);
   }
 }
 
@@ -138,4 +202,8 @@ void updateSensors(){
     if (analogRead(SmallerIce) == 1000){
     iceSize = 0;
   }
+  if (analogRead(WaterButton) == 1000){
+    dispensingWater = 1;
+  }
+  else dispensingWater = 0;
 }
