@@ -58,8 +58,8 @@ int displayProgressPercentage = 0;
 String statusMessage = "################"; //init with 16 values to skip memory issues
 
 
-//timer length
-const long waterFilltime = 1000;
+//timer length (MS)
+const long waterFilltime = 3000;
 const long LowIceTime = 10000;
 const long HighIceTimne = 20000;
 const long DisplayUpdateDelayTime = 500;
@@ -69,8 +69,9 @@ long iceTimer = HighIceTimne;
 //timer state  1 = finished, 0 = disabled, 2 = Running, 3 = Start
 long Ice = 0;
 long Fill = 0;
-long DisplayUpdateDelay = 0;
+long DisplayUpdateDelay = 1;
 
+//timer start times
 unsigned long IceStartTimeMS;
 unsigned long FillStartTimeMS;
 unsigned long DisplayUpdateStartTimeMS;
@@ -80,12 +81,8 @@ unsigned long currentMillis;
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-void setup()
-{ 
+void setup(){ 
   lcd.begin(); //init the lcd
-  lcd.print("Starting#########");
-  // Initialize the serial port at a speed of 9600 baud
-  Serial.begin(9600);
   
   int i = 0;
   while (i < 14){
@@ -93,14 +90,61 @@ void setup()
     digitalWrite(i, HIGH);
     i = i + 1;
   }
+  
 }
 
 void loop(){
   currentMillis = millis();
+
+  startTimers();
   decrementTimer();
-  //updateSensors();
+  updateSensors();
   cycle();
   setRelayState();
+  updateDisplay();
+  blinkArduinoLED();
+}
+
+
+unsigned long previousMillis = 0;
+const long interval = 1000;
+int ledState = LOW;
+void blinkArduinoLED(){
+    if (currentMillis - previousMillis >= interval) {
+      // save the last time you blinked the LED
+      previousMillis = currentMillis;
+  
+      // if the LED is off turn it on and vice-versa:
+      if (ledState == LOW) {
+        ledState = HIGH;
+      } else {
+        ledState = LOW;
+      }
+  
+      // set the LED with the ledState of the variable:
+      digitalWrite(13, ledState);
+  }
+}
+void startTimers(){
+  if (Ice == 3){
+    Ice = 2;
+    IceStartTimeMS = currentMillis;
+  }
+  if (Fill == 3){
+    Fill = 2;
+    FillStartTimeMS = currentMillis;
+  }
+  if (DisplayUpdateDelay == 3){
+    DisplayUpdateDelay = 2;
+    DisplayUpdateStartTimeMS = currentMillis;
+  }
+}
+void updateDisplay(){
+  if (DisplayUpdateDelay == 1){
+    DisplayUpdateDelay = 3;
+    lcd.clear();
+    lcd.print(statusMessage);
+  }
 }
 void cycle(){
   if (iceCycleStage == 1){
@@ -111,16 +155,17 @@ void cycle(){
       Fill = 3;
     }
     if (Fill == 1){
-     //water pump off
-     Fill = 0;
-     iceCycleStage = iceCycleStage + 1;
+      //water pump off
+      Fill = 0;
+      iceCycleStage = iceCycleStage + 1;
+      statusMessage = "Filling with water";
     }
   }
   if (iceCycleStage == 3){ //making ice
     if (Ice == 0){
       Ice = 3;
+      statusMessage = "Making Ice";
     }
-    compressorReverse = 0;
     compressorRunning = 1;
     if (Ice == 1){
       iceCycleStage = iceCycleStage + 1;
@@ -139,13 +184,13 @@ void cycle(){
 }
 
 void decrementTimer(){
-  if (Ice == 2 && IceStartTimeMS - currentMillis >= iceTimer){
+  if (Ice == 2 && currentMillis - IceStartTimeMS >= iceTimer){
     Ice = 1;
   }
-  if (Fill == 2 && FillStartTimeMS - currentMillis >= waterFilltime){
+  if (Fill == 2 && currentMillis - FillStartTimeMS >= waterFilltime){
     Fill = 1;
   }
-  if (DisplayUpdateDelay == 2 && DisplayUpdateStartTimeMS - currentMillis >= DisplayUpdateDelayTime){
+  if (DisplayUpdateDelay == 2 && currentMillis - DisplayUpdateStartTimeMS >= DisplayUpdateDelayTime){
     DisplayUpdateDelay = 1;
   }
 }
