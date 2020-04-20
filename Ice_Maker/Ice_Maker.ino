@@ -34,7 +34,7 @@ bool compressorRunning  = 0;
 bool compressorReverse = 0;
 bool dispensingWater = 0;
 bool dispensingIce = 0;
-int iceCycleStage= 0;
+int iceCycleStage= 3;
 /*
  * 0 = idle
  * 1 = cycle tray
@@ -59,17 +59,22 @@ String statusMessage = "################"; //init with 16 values to skip memory 
 
 
 //timer length
-const int waterFilltime = 1000;
-const int LowIceTime = 10000;
-const int HighIceTimne = 20000;
-const int DisplayUpdateDelayTime = 500;
+const long waterFilltime = 1000;
+const long LowIceTime = 10000;
+const long HighIceTimne = 20000;
+const long DisplayUpdateDelayTime = 500;
 
-int iceTimer = HighIceTimne;
+long iceTimer = HighIceTimne;
 
-//timers  1 = finished, 0 = disabled
-int Ice = 0;
-int Fill = 0;
-int DisplayUpdateDelay = 0;
+//timer state  1 = finished, 0 = disabled, 2 = Running, 3 = Start
+long Ice = 0;
+long Fill = 0;
+long DisplayUpdateDelay = 0;
+
+unsigned long IceStartTimeMS;
+unsigned long FillStartTimeMS;
+unsigned long DisplayUpdateStartTimeMS;
+unsigned long currentMillis;
 
 
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
@@ -81,6 +86,7 @@ void setup()
   lcd.print("Starting#########");
   // Initialize the serial port at a speed of 9600 baud
   Serial.begin(9600);
+  
   int i = 0;
   while (i < 14){
     pinMode(i,OUTPUT);
@@ -90,8 +96,9 @@ void setup()
 }
 
 void loop(){
+  currentMillis = millis();
   decrementTimer();
-  updateSensors();
+  //updateSensors();
   cycle();
   setRelayState();
 }
@@ -101,7 +108,7 @@ void cycle(){
   }
   if (iceCycleStage == 2){ //filling with water
     if (Fill == 0){
-      Fill = waterFilltime;
+      Fill = 3;
     }
     if (Fill == 1){
      //water pump off
@@ -111,7 +118,7 @@ void cycle(){
   }
   if (iceCycleStage == 3){ //making ice
     if (Ice == 0){
-      Ice = iceTimer;
+      Ice = 3;
     }
     compressorReverse = 0;
     compressorRunning = 1;
@@ -132,14 +139,14 @@ void cycle(){
 }
 
 void decrementTimer(){
-  if (Ice > 1){
-    Ice = Ice - 1;
+  if (Ice == 2 && IceStartTimeMS - currentMillis >= iceTimer){
+    Ice = 1;
   }
-  if (Fill > 1){
-    Fill = Fill - 1;
+  if (Fill == 2 && FillStartTimeMS - currentMillis >= waterFilltime){
+    Fill = 1;
   }
-  if (DisplayUpdateDelay > 1){
-    DisplayUpdateDelay = DisplayUpdateDelay - 1;
+  if (DisplayUpdateDelay == 2 && DisplayUpdateStartTimeMS - currentMillis >= DisplayUpdateDelayTime){
+    DisplayUpdateDelay = 1;
   }
 }
 void setRelayState(){
