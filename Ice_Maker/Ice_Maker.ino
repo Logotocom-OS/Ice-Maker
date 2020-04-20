@@ -44,25 +44,25 @@ int iceCycleStage= 3;
  * 5 = cycle tray
  * 6 = reset
  */
-int iceSize = 0;
+int iceSize = 1;
 // 0 = small, 1 = large
 bool waterLow = 1;
 bool powerOn = 0;
 bool iceFull = 0;
 int motorDirection = 3; 
-//1 = forword, 2 = reverse, 0 = stopped, 3 = unknown
+//1 = forword, 2 = reverse, 0 = unknown
 bool backlightOn = 0;
 
 //display vars
-int displayProgressPercentage = 0;
+int displayProgressPercentage = 100;
 String statusMessage = "################"; //init with 16 values to skip memory issues
 
 
 //timer length (MS)
-const long waterFilltime = 3000;
+const long waterFilltime = 10000;
 const long LowIceTime = 10000;
 const long HighIceTimne = 20000;
-const long DisplayUpdateDelayTime = 500;
+const long DisplayUpdateDelayTime = 100;
 
 long iceTimer = HighIceTimne;
 
@@ -81,60 +81,64 @@ unsigned long currentMillis;
 // Set the LCD address to 0x27 for a 16 chars and 2 line display
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
+byte ProgressBarCustomChar[] = {
+  B00000,
+  B00000,
+  B11111,
+  B11111,
+  B11111,
+  B11111,
+  B00000,
+  B00000
+};
+
+byte SeperatorcustomChar[] = {
+  B01110,
+  B01110,
+  B01110,
+  B01110,
+  B01110,
+  B01110,
+  B01110,
+  B01110
+};
+
 void setup(){ 
   lcd.begin(); //init the lcd
-  
+  lcd.createChar(0, ProgressBarCustomChar);  
+  lcd.createChar(1,SeperatorcustomChar);
   int i = 0;
   while (i < 14){
     pinMode(i,OUTPUT);
     digitalWrite(i, HIGH);
     i = i + 1;
   }
-  
+  Serial.begin(9600);
 }
 
 void loop(){
   currentMillis = millis();
-
   startTimers();
   decrementTimer();
   updateSensors();
   cycle();
   setRelayState();
+  updateProgressBar();
   updateDisplay();
-  blinkArduinoLED();
-}
-
-
-unsigned long previousMillis = 0;
-const long interval = 1000;
-int ledState = LOW;
-void blinkArduinoLED(){
-    if (currentMillis - previousMillis >= interval) {
-      // save the last time you blinked the LED
-      previousMillis = currentMillis;
-  
-      // if the LED is off turn it on and vice-versa:
-      if (ledState == LOW) {
-        ledState = HIGH;
-      } else {
-        ledState = LOW;
-      }
-  
-      // set the LED with the ledState of the variable:
-      digitalWrite(13, ledState);
-  }
 }
 void startTimers(){
   if (Ice == 3){
+    Serial.print("Starting Ice Timer \n");
     Ice = 2;
     IceStartTimeMS = currentMillis;
   }
   if (Fill == 3){
+    Serial.print("Starting Fill Timer \n");
     Fill = 2;
     FillStartTimeMS = currentMillis;
   }
   if (DisplayUpdateDelay == 3){
+    //Serial.print("Starting Display Timer \n");
     DisplayUpdateDelay = 2;
     DisplayUpdateStartTimeMS = currentMillis;
   }
@@ -142,11 +146,45 @@ void startTimers(){
 void updateDisplay(){
   if (DisplayUpdateDelay == 1){
     DisplayUpdateDelay = 3;
-    lcd.clear();
+    //lcd.clear();
+    lcd.setCursor(0,0);
     lcd.print(statusMessage);
+
+    //Ice Size
+    lcd.setCursor(10,1);
+    lcd.write(1); //prints a filled character
+    if (iceSize == 0){
+      lcd.print("Large");
+    }
+    else lcd.print ("Small");
+
+
+
+    //progress bar
+    if (iceCycleStage > 0){
+      lcd.setCursor(0,1);
+      int progress = (displayProgressPercentage / 20);
+      while (progress > 0){
+        lcd.write(0);
+        progress = progress - 1;
+      }
+      lcd.setCursor(6,1);
+      lcd.print(displayProgressPercentage);
+      lcd.print("%");
+    }
   }
 }
+void updateProgressBar(){
+  displayProgressPercentage = (((float)currentMillis - (float)IceStartTimeMS) / (float)iceTimer) * 100;
+  if (displayProgressPercentage > 100){
+    displayProgressPercentage = 100;
+  }
+}
+
 void cycle(){
+  if (iceCycleStage == 0){
+    statusMessage = "Idle";
+  }
   if (iceCycleStage == 1){
     
   }
