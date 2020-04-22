@@ -1,6 +1,13 @@
 #include <Wire.h> 
 #include <LiquidCrystal_I2C.h>
 
+/*
+* TODO: Store current state in eeprom
+*
+*
+*/
+
+
 // IO pins
 //AC
 const char Compresser = 2;
@@ -29,12 +36,14 @@ const char SmallerIce = 'A8';
 //Other Outputs
 const int backlightLED = 14;
 
+
+
 //vars
 bool compressorRunning  = 0;
 bool compressorReverse = 0;
 bool dispensingWater = 0;
 bool dispensingIce = 0;
-int iceCycleStage= 3;
+int iceCycleStage= 2;
 /*
  * 0 = idle
  * 1 = cycle tray
@@ -47,6 +56,7 @@ int iceCycleStage= 3;
 int iceSize = 1;
 // 0 = small, 1 = large
 bool waterLow = 1;
+bool waterFilling = 0;
 bool powerOn = 0;
 bool iceFull = 0;
 int motorDirection = 3; 
@@ -61,8 +71,8 @@ String statusMessage = "################"; //init with 16 values to skip memory 
 //timer length (MS)
 const long waterFilltime = 10000;
 const long LowIceTime = 10000;
-const long HighIceTimne = 20000;
-const long DisplayUpdateDelayTime = 100;
+const long HighIceTimne = 200000;
+const long DisplayUpdateDelayTime = 500;
 
 long iceTimer = HighIceTimne;
 
@@ -118,13 +128,13 @@ void setup(){
 
 void loop(){
   currentMillis = millis();
+  updateProgressBar();
+  updateDisplay();
   startTimers();
   decrementTimer();
   updateSensors();
   cycle();
   setRelayState();
-  updateProgressBar();
-  updateDisplay();
 }
 void startTimers(){
   if (Ice == 3){
@@ -150,6 +160,15 @@ void updateDisplay(){
     lcd.setCursor(0,0);
     lcd.print(statusMessage);
 
+    //remove existing characters
+    int statusLength = statusMessage.length();
+    if (statusLength < 16){
+      int spaces = 16 - statusLength;
+      while (spaces != 0){
+        lcd.write(20);
+        spaces = spaces - 1;
+      }
+    }
     //Ice Size
     lcd.setCursor(10,1);
     lcd.write(1); //prints a filled character
@@ -161,7 +180,7 @@ void updateDisplay(){
 
 
     //progress bar
-    if (iceCycleStage > 0){
+    if (iceCycleStage > 1){
       lcd.setCursor(0,1);
       int progress = (displayProgressPercentage / 20);
       while (progress > 0){
@@ -175,9 +194,12 @@ void updateDisplay(){
   }
 }
 void updateProgressBar(){
-  displayProgressPercentage = (((float)currentMillis - (float)IceStartTimeMS) / (float)iceTimer) * 100;
+  displayProgressPercentage = ((((float)currentMillis - (float)IceStartTimeMS) / (float)iceTimer) * 100) + 1;
   if (displayProgressPercentage > 100){
     displayProgressPercentage = 100;
+  }
+  if (iceCycleStage != 3){
+    displayProgressPercentage = 0;
   }
 }
 
@@ -191,9 +213,10 @@ void cycle(){
   if (iceCycleStage == 2){ //filling with water
     if (Fill == 0){
       Fill = 3;
+      waterFilling = 1;
     }
     if (Fill == 1){
-      //water pump off
+      waterFilling = 0;
       Fill = 0;
       iceCycleStage = iceCycleStage + 1;
       statusMessage = "Filling with water";
@@ -270,6 +293,12 @@ void setRelayState(){
   }
   else{
     digitalWrite(CompresserReverseValve,HIGH);
+  }
+  if (waterFilling){
+    digitalWrite(IceWaterPump, LOW);
+  }
+  else{
+    digitalWrite(IceWaterPump,HIGH);
   }
 }
 
