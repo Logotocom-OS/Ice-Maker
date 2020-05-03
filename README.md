@@ -4,14 +4,14 @@ This project is to replace the internal microcontroller on a NutriChef Ice Maker
 
 ## Dependentcies
 
-- iquidCrystal_I2C library
+- LiquidCrystal_I2C library
 
 ## Hardware
 
 - Arduino Mega
 - 8 channel Relay (AC)
 - 4 channel Relay (DC)
-- 16x2 LCD with IC2 chip
+- 16x2 LCD with I2C chip
 - 12v to 5v buck converter
 - 12v 5a generic psu
 
