@@ -1,13 +1,9 @@
 # Control a countertop ice maker with an arduino
 
----
-
 This project is to replace the internal microcontroller on a NutriChef Ice Maker with an arduino. The original microcontroller was failing and this was cheeper than getting a replacement.
 
 Requires iquidCrystal_I2C library
 Requires Arduino Mega
-
----
 
 ## Hardware
 
@@ -28,8 +24,6 @@ Requires Arduino Mega
 - IR line sensor
 - Water float sensor
 - 2 microswitches
-
----
 
 ## Ice Cycle
 
