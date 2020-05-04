@@ -23,7 +23,7 @@ This project is to replace the internal microcontroller on a NutriChef Ice Maker
 - AC Motor
 - Compressor w/ reverse valvc
 - 5 Buttons
-- IR line sensor
+- IR line sensor (Broken)
 - Water float sensor
 - 2 microswitches
 
