@@ -40,4 +40,5 @@ This project is to replace the internal microcontroller on a NutriChef Ice Maker
 
 ### Notes
 
-The compressor has a built in cycle timer to prevent damage to the compressor components. Turning the compressor relay on right after it was turned off does nothing for 5 minutes.
+- The compressor has a built in cycle timer to prevent damage to the compressor components. Turning the compressor relay on right after it was turned off does nothing for 5 minutes.
+- Ice Tray motor has no set direction.
